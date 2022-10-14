@@ -1,0 +1,414 @@
+Paste-bin.xyz
+  JAVA5 
+  6
+Mini server web
+Guest on 5th November 2021 05:04:26 PM
+ 
+ 
+ 
+ 
+ 
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+ 
+/*
+ * Scrivere un programma JAVA che implementi un server Http che gestisca richieste di trasferimento di file di diverso tipo (es. immagini jpeg, gif) provenienti da un browser web.
+ * Il  server:
+ * sta in ascolto su una porta nota al client (es. 6789)
+ * gestisce richieste Http di tipo GET alla Request URL localhost:port/filename
+ * le connessioni possono essere non persistenti.
+ * usare le classi Socket e ServerSocket per sviluppare il programma server
+ * per inviare al server le richieste, utilizzare un qualsiasi browser
+ */
+ 
+public class index {
+       
+       
+        public static void main(String[] args) throws UnknownHostException {
+               
+                ThreadPoolExecutor workers;    
+               
+                InetAddress addr = InetAddress.getByName("192.168.1.3");
+ 
+                 try(ServerSocket server = new ServerSocket(6789,50,addr)){
+                       
+                         System.out.println("Server connesso alla porta: "+server.getLocalPort());
+               
+                         // Creo il mio pool
+                         workers = new ThreadPoolExecutor(3,3, 0L,
+                                                TimeUnit.MILLISECONDS,new LinkedBlockingQueue<Runnable>(10));            
+                         
+                         // fino a quando non termino manualmente accetto connessioni
+                         // e creo un thread che me le gestisce
+                         while(true) workers.execute(new HandlerRequest(server.accept()));
+                         
+                         
+                 } catch (IOException e) {e.printStackTrace();}
+        }
+}
+ 
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.net.Socket;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+ 
+public class HandlerRequest extends Thread  {
+ 
+        private Socket client;
+        private BufferedReader request;
+       
+ 
+        public HandlerRequest(Socket pclient) {
+                client = pclient;
+        }
+        public String GetName() throws DefaultPageException {
+               
+                String strBuff = null;
+                String message = new String();
+                String name = new String();
+                char single='x';
+                short index = 5; // in questa posizione nel protocollo http request � presente il file richiesto
+o
+               
+                try {
+        // utilizzo buffered per aumentare le performance
+e
+        // creo uno stream con il filedescriptior collegato al socket passato al momento della creazione
+e
+                        request = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                       
+        // leggo e metto nel messaggio riga per riga
+a
+        // piccola osservazione.. i dati inviati dal client seguono una certa formattazione http
+p
+        // di conseguenza readline mi aiuta a separe le varie rige che vengono mandate
+e
+        // e ad riprodurle nella stringa "message"
+"
+                while ((strBuff = request.readLine()) != null) {
+                        message += strBuff+"\n";
+                    if (strBuff.isEmpty()) break;
+                }
+                                               
+                } catch (IOException e) { e.printStackTrace(); }
+               
+               
+// inizio a leggere dalla posizione 5 dove � presente il primo carattere
+re// del file richiesto.. leggo carattere per carattere e lo aggiungo alla stringa name
+am// esco da ciclo quando incotro un blanck che sta a significare "fine" nome file.
+le.
+                while(true) {  
+                        single = message.charAt(index++);
+                        if(single==' ') break;
+                        name += single;
+                       
+                // se il file � vuoto es 127.0.0.1:8958/
+95// genero un eccezione e mando una pagina di default dove � presente
+re// un insieme di file che posso mandare
+mandare
+                if (name.isEmpty()) throw new DefaultPageException();
+                return name;
+        }
+       
+        public void run() {
+               
+                System.out.println("---------------------");
+                System.out.println("Un cliente si � connesso al server!");
+                System.out.println("La sua richiesta � :// mostro la pagina di default se non � presente uno spefico file richiesto
+ile richiesto
+                String name = null;
+                try { name = GetName(); } catch (DefaultPageExcep// collego sempre uno stream al socket
+eam// utilizzo questa classe perch� ho la capacit� sia di scrviere testo
+di // che di mandare un flusso di byte
+un flusso di byte
+                        try(PrintStream response = new PrintStream(client.getOutputStrea// ovviamente la risposta deve seguire una certa formattazione
+rta formattazione
+                                        response.print("HTTP/1.0 200 OK\r\n");
+                               
+                                        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z");
+                                        response.print("Date: "+simpleDateFormat.format(new Date())+"\r\n");
+                               
+                                        response.print("Server: Andrea/2.3.4\r\n");
+                                        response.print("Conten t-Type: text/html\r\n");
+                                        response.print("Content-Length: 83\r\n");
+                                response.print("Expires: "+simpleDateFormat.format(new Date())+"\r\n");
+                                response.print("Last-modified: "+simpleDateFormat.format(new Date())+"\r\n");
+                                response.print("\// pagina web usata come legenda
+sata come legenda
+                                response.print("<h1>Scegli il file da vedere</h1>");
+                                response.print("<P>Moon.jpg - minion.jpg - hello.gif - doc.txt</P>");
+                         
+                               
+                                } catch (Exception e1) {e1.printStackTrace();}
+                               
+                                return;
+                }              
+                System.out.pr// recupero il file
+ recupero il file
+                File file = // e ne stabilisco il peso che verr� utilizzato per mandare la risposta http in rete
+sposta http in rete
+                int sizeofile = (int)fi// creo uno stream e lo associo al file richiesto
+o al file richiesto
+                try(PrintStream response = new PrintStream(client.getOutputStream());
+                        BufferedInputStream fileStream = new BufferedInputStream(new FileInputStrea// ovviamente la risposta deve seguire una certa formattazione
+certa formattazione
+ 
+                        response.print(");
+                       
+                        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("w SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z");
+                        response.print("Date: "+simpleDateFormat.format(new Date())+"\r\n");
+                       
+                        response.print("Server: Andr// ora definisco il tipo del file: se � un testo, un immagine o una gif
+un immagine o una gif
+                        String type = Files.probeContentType(file.toPath());
+                        response.print("\o\t"nt-Type: "// devo avvertire il client di quando spazio ha bisogno per salvarsi il documento
+sal// inviato come body, per questo uso il peso calcolato precedentemente
+olato precedentemente
+                        response.print("Content-Length: "+sizeofile+"\r\n");
+                response.print("Expires: "+simpleDateFormat.format(new Date())+"\r\n");
+                response.print("Last-modified: "+simpleDateFormat.format(new Date())+"\r\n");
+                response.print("\r\n")// inizializzo un array di btye dal peso del file
+tye dal peso del file
+                        byte[] buffer = new by// prendo il flusso stream creato prima e lo carico nell'array di btye
+co nell'array di btye
+                while(fileStream.read(buffer)!=-1// in fine scrivo il numero preciso di byte nel fd che rappresenta la mia risposta http
+ la mia risposta http
+                response.write(buffer,0,sizeofile);
+ 
+                        System.out.println("); 
+                return ;
+ 
+                }
+                catch (FileNotFoundException e) {e.printStackTrace();}
+                catch (IOException e) {e.printStackTrace();}
+ 
+        }
+       
+}
+Raw Paste
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+/*
+ * Scrivere un programma JAVA che implementi un server Http che gestisca richieste di trasferimento di file di diverso tipo (es. immagini jpeg, gif) provenienti da un browser web.
+ * Il  server:
+ * sta in ascolto su una porta nota al client (es. 6789)
+ * gestisce richieste Http di tipo GET alla Request URL localhost:port/filename
+ * le connessioni possono essere non persistenti.
+ * usare le classi Socket e ServerSocket per sviluppare il programma server 
+ * per inviare al server le richieste, utilizzare un qualsiasi browser
+ */
+
+public class index {
+	
+	
+	public static void main(String[] args) throws UnknownHostException {
+		
+		ThreadPoolExecutor workers;	
+		
+		InetAddress addr = InetAddress.getByName("192.168.1.3");
+
+		 try(ServerSocket server = new ServerSocket(6789,50,addr)){
+			
+			 System.out.println("Server connesso alla porta: "+server.getLocalPort());
+		
+			 // Creo il mio pool 
+			 workers = new ThreadPoolExecutor(3,3, 0L, 
+						TimeUnit.MILLISECONDS,new LinkedBlockingQueue<Runnable>(10));		 
+			 
+			 // fino a quando non termino manualmente accetto connessioni
+			 // e creo un thread che me le gestisce
+			 while(true) workers.execute(new HandlerRequest(server.accept()));
+			 
+			 
+		 } catch (IOException e) {e.printStackTrace();}	
+	}
+}
+
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.net.Socket;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class HandlerRequest extends Thread  {
+
+	private Socket client;
+	private BufferedReader request;
+	
+
+	public HandlerRequest(Socket pclient) {
+		client = pclient;
+	}
+	public String GetName() throws DefaultPageException {
+		
+		String strBuff = null;
+		String message = new String();
+		String name = new String();
+		char single='x';
+		short index = 5; // in questa posizione nel protocollo http request � presente il file richiesto
+		
+		try {
+			// utilizzo buffered per aumentare le performance
+			// creo uno stream con il filedescriptior collegato al socket passato al momento della creazione
+			request = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			
+			// leggo e metto nel messaggio riga per riga
+			// piccola osservazione.. i dati inviati dal client seguono una certa formattazione http
+			// di conseguenza readline mi aiuta a separe le varie rige che vengono mandate
+			// e ad riprodurle nella stringa "message"
+	        while ((strBuff = request.readLine()) != null) {
+	        	message += strBuff+"\n";
+	            if (strBuff.isEmpty()) break;
+	        }
+						
+		} catch (IOException e) { e.printStackTrace(); }
+		
+		
+		// inizio a leggere dalla posizione 5 dove � presente il primo carattere 
+		// del file richiesto.. leggo carattere per carattere e lo aggiungo alla stringa name
+		// esco da ciclo quando incotro un blanck che sta a significare "fine" nome file.
+		while(true) {	
+			single = message.charAt(index++); 
+			if(single==' ') break;
+			name += single;
+			
+		}
+		// se il file � vuoto es 127.0.0.1:8958/ 
+		// genero un eccezione e mando una pagina di default dove � presente
+		// un insieme di file che posso mandare
+		if (name.isEmpty()) throw new DefaultPageException();
+		return name;
+	}
+	
+	public void run() {
+		
+		System.out.println("---------------------");
+		System.out.println("Un cliente si � connesso al server!");
+		System.out.println("La sua richiesta � :");
+		
+		
+		// mostro la pagina di default se non � presente uno spefico file richiesto
+		String name = null;
+		try { name = GetName(); } catch (DefaultPageException e) {
+
+			// collego sempre uno stream al socket
+			// utilizzo questa classe perch� ho la capacit� sia di scrviere testo
+			// che di mandare un flusso di byte
+			try(PrintStream response = new PrintStream(client.getOutputStream())) {
+				
+					// ovviamente la risposta deve seguire una certa formattazione
+					response.print("HTTP/1.0 200 OK\r\n");
+				
+					SimpleDateFormat simpleDateFormat = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z");
+					response.print("Date: "+simpleDateFormat.format(new Date())+"\r\n");
+				
+					response.print("Server: Andrea/2.3.4\r\n");
+					response.print("Conten t-Type: text/html\r\n");
+					response.print("Content-Length: 83\r\n");
+			        response.print("Expires: "+simpleDateFormat.format(new Date())+"\r\n");
+			        response.print("Last-modified: "+simpleDateFormat.format(new Date())+"\r\n");
+			        response.print("\r\n");
+			        // pagina web usata come legenda
+			        response.print("<h1>Scegli il file da vedere</h1>");
+			        response.print("<P>Moon.jpg - minion.jpg - hello.gif - doc.txt</P>");
+			 
+			       
+				} catch (Exception e1) {e1.printStackTrace();}
+				
+				return;
+		}		
+		System.out.println(name);
+		
+		// recupero il file
+		File file = new File(name);
+		// e ne stabilisco il peso che verr� utilizzato per mandare la risposta http in rete
+		int sizeofile = (int)file.length();
+				
+		// creo uno stream e lo associo al file richiesto
+		try(PrintStream response = new PrintStream(client.getOutputStream());
+			BufferedInputStream fileStream = new BufferedInputStream(new FileInputStream(file)))
+		
+		{
+			// ovviamente la risposta deve seguire una certa formattazione
+
+			response.print("HTTP/1.0 200 OK\r\n");
+			
+			SimpleDateFormat simpleDateFormat = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z");
+			response.print("Date: "+simpleDateFormat.format(new Date())+"\r\n");
+			
+			response.print("Server: Andrea/2.3.4\r\n");
+
+			// ora definisco il tipo del file: se � un testo, un immagine o una gif
+			String type = Files.probeContentType(file.toPath());
+			response.print("Content-Type: "+type+"\r\n");
+			
+			// devo avvertire il client di quando spazio ha bisogno per salvarsi il documento
+			// inviato come body, per questo uso il peso calcolato precedentemente
+			response.print("Content-Length: "+sizeofile+"\r\n");
+	        response.print("Expires: "+simpleDateFormat.format(new Date())+"\r\n");
+	        response.print("Last-modified: "+simpleDateFormat.format(new Date())+"\r\n");
+	        response.print("\r\n");
+
+	        
+	        // inizializzo un array di btye dal peso del file
+			byte[] buffer = new byte[sizeofile];
+			
+			// prendo il flusso stream creato prima e lo carico nell'array di btye
+	        while(fileStream.read(buffer)!=-1);
+	        
+	        // in fine scrivo il numero preciso di byte nel fd che rappresenta la mia risposta http
+	        response.write(buffer,0,sizeofile);
+
+			System.out.println("---------------------");	
+	        return ;
+
+		} 
+		catch (FileNotFoundException e) {e.printStackTrace();} 
+		catch (IOException e) {e.printStackTrace();}
+
+	}
+	
+}
