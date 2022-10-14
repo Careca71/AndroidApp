@@ -1,2 +1,5 @@
 # AndroidApp
-Mobile application development for  University of Pisa
+Mobile application development using Room Db and internal memory for storage.
+
+
+for  University of Pisa
